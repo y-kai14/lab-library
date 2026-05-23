@@ -18,19 +18,24 @@
 npm install
 ```
 
-### 2. Firebase プロジェクトの準備
+### 2. Firebase プロジェクトを設定して開始
 
-[Firebase Console](https://console.firebase.google.com) で以下を設定してください。
+まずプロジェクトに名前を付けましょう（Lab-library）
 
-**Authentication**
-1. 「構築」→「Authentication」→「始める」
-2. 「Sign-in method」→「メール/パスワード」を有効化
-3. 「Users」タブからメンバーのアカウントを作成
+**左タブのセキュリティ**
+- Authentication
+  - ログイン方法
+  - 「メール/パスワード」を有効化
+- ユーザー
+  - ユーザーを追加
 
-**Firestore Database**
-1. 「構築」→「Firestore Database」→「データベースの作成」
-2. ロケーション: `asia-northeast1`（東京）を選択
-3. 「ルール」タブを以下に書き換えて公開
+**左タブのDatabaseとStorage**
+- Firestore
+  - データベースを作成
+  - standardエディション
+  - asia-northeast1 (Tokyo)
+  - テストモードで開始する
+  - ルールを以下に書き換えて公開
 
 ```
 rules_version = '2';
@@ -43,24 +48,18 @@ service cloud.firestore {
 }
 ```
 
-### 3. 環境変数の設定
+**左タブの設定の全般**
 
-`.env.example` をコピーして `.env.local` を作成し、Firebase の設定値を入力します。
+「マイアプリ」セクション → `</>`（ウェブ）を選択
+ニックネームをlab-libraryにしてチェックマークを入れずにアプリを登録
+
+### 3. Firebase SDKのインストールと環境変数の設定
 
 ```bash
-cp .env.example .env.local
+npm install firebase
 ```
 
-```
-VITE_FIREBASE_API_KEY=...
-VITE_FIREBASE_AUTH_DOMAIN=...
-VITE_FIREBASE_PROJECT_ID=...
-VITE_FIREBASE_STORAGE_BUCKET=...
-VITE_FIREBASE_MESSAGING_SENDER_ID=...
-VITE_FIREBASE_APP_ID=...
-```
-
-設定値は Firebase Console の「プロジェクトの設定」→「マイアプリ」から確認できます。
+表示される `firebaseConfig` と `.env.example` を参考に `.env.local` を作成し、各自のものにする
 
 ### 4. 開発サーバーの起動
 
@@ -105,23 +104,27 @@ Firebase Authentication で作成したメールアドレスとパスワード�
 
 ## デプロイ
 
-Firebase Hosting を使うと、誰のPCが起動していなくても全員がアクセスできる URL が発行されます。
-
 ```bash
-# 初回のみ
 sudo npm install -g firebase-tools
 firebase login
 firebase init hosting
-# → 公開ディレクトリ: dist
-# → SPA: Yes
-# → GitHub 自動ビルド: No
-# → dist/index.html を上書き: No
-
-# ビルドしてデプロイ
-npm run build && firebase deploy
 ```
 
-デプロイ後に表示される `https://your-project.web.app` のURLをメンバーに共有してください。
+| 質問 | 回答 |
+|------|------|
+| Please select an option | Use an existing project |
+| Select a default Firebase project for this directory | lab-library |
+| What do you want to use as your public directory? | dist |
+| Configure as a single-page app (rewrite all urls to /index.html)? | Yes |
+| Set up automatic builds and deploys with GitHub? | No |
+| Would you like to install agent skills for Firebase? | No |
+
+```bash
+npm run build
+firebase deploy
+```
+
+`https://lab-library-xxxx.web.app` のURLが発行され、誰のPCからでもアクセスできます。
 
 ## 技術スタック
 
