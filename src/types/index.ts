@@ -5,6 +5,8 @@ export interface Book {
   publisher: string
   isbn?: string
   coverUrl?: string
+  description?: string
+  copyCount?: number
   borrowedBy?: string
   borrowedByName?: string
   borrowedAt?: string

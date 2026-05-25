@@ -12,6 +12,7 @@ export default function BookCard({ book }: Props) {
 
   const isBorrowed = !!book.borrowedBy && book.borrowedBy !== ''
   const isMyBook = user?.uid === book.borrowedBy
+  const copyCount = book.copyCount || 1
 
   const handleBorrow = async () => {
     if (!user) return
@@ -51,6 +52,12 @@ export default function BookCard({ book }: Props) {
         </h3>
         <p className="text-sm text-gray-500 mt-1">{book.author}</p>
         <p className="text-xs text-gray-400">{book.publisher}</p>
+        <p className="text-xs text-gray-400 mt-1">所蔵 {copyCount}冊</p>
+        {book.description && (
+          <p className="text-xs text-gray-500 mt-2 line-clamp-2">
+            {book.description}
+          </p>
+        )}
 
         <div className="mt-2 flex items-center gap-2 flex-wrap">
           {isBorrowed ? (
