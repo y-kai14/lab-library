@@ -3,11 +3,13 @@ import { Link } from 'react-router-dom'
 import Layout from '../components/Layout'
 import BookCard from '../components/BookCard'
 import SearchBar from '../components/SearchBar'
+import AiRecommender from '../components/AiRecommender'
 import { useBooks } from '../hooks/useBooks'
 
 export default function Books() {
   const { books, loading } = useBooks()
   const [query, setQuery] = useState('')
+  const [activeTab, setActiveTab] = useState<'search' | 'ai'>('search')
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase()
@@ -45,22 +47,53 @@ export default function Books() {
           </Link>
         </div>
 
-        <SearchBar value={query} onChange={setQuery} />
+        {/* 検索・AI本探し切り替えタブ */}
+        <div className="flex bg-gray-100/80 p-1.5 rounded-2xl border border-gray-200/30 backdrop-blur-sm shadow-inner">
+          <button
+            onClick={() => setActiveTab('search')}
+            className={`flex-1 py-2 text-sm font-semibold rounded-xl transition-all duration-200 ${
+              activeTab === 'search'
+                ? 'bg-white text-indigo-600 shadow-sm hover:text-indigo-700'
+                : 'text-gray-500 hover:text-gray-800'
+            }`}
+          >
+            🔍 通常検索
+          </button>
+          <button
+            onClick={() => setActiveTab('ai')}
+            className={`flex-1 py-2 text-sm font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-1.5 ${
+              activeTab === 'ai'
+                ? 'bg-white text-indigo-600 shadow-sm hover:text-indigo-700 font-bold'
+                : 'text-gray-500 hover:text-gray-800'
+            }`}
+          >
+            <span className="text-xs">✨</span> AI本探し
+          </button>
+        </div>
 
-        {loading ? (
-          <div className="text-center py-16 text-gray-400">読み込み中...</div>
-        ) : filtered.length === 0 ? (
-          <div className="text-center py-16 text-gray-400">
-            {query ? '検索結果がありません' : '蔵書がまだ登録されていません'}
+        {activeTab === 'search' ? (
+          <div className="space-y-4">
+            <SearchBar value={query} onChange={setQuery} />
+
+            {loading ? (
+              <div className="text-center py-16 text-gray-400">読み込み中...</div>
+            ) : filtered.length === 0 ? (
+              <div className="text-center py-16 text-gray-400">
+                {query ? '検索結果がありません' : '蔵書がまだ登録されていません'}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {filtered.map((book) => (
+                  <BookCard key={book.id} book={book} />
+                ))}
+              </div>
+            )}
           </div>
         ) : (
-          <div className="space-y-3">
-            {filtered.map((book) => (
-              <BookCard key={book.id} book={book} />
-            ))}
-          </div>
+          <AiRecommender books={books} />
         )}
       </div>
     </Layout>
   )
 }
+
