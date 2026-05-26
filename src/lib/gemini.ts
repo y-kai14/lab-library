@@ -42,13 +42,17 @@ export async function recommendBooks(
   const { GoogleGenerativeAI } = await import('@google/generative-ai')
   const genAI = new GoogleGenerativeAI(apiKey)
 
-  // 最新で最も高速かつ推薦性能の高い 'gemini-1.5-flash' または 'gemini-2.0-flash' を使用
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-1.5-flash',
-    generationConfig: {
-      responseMimeType: 'application/json',
+  // 最新で最も高速かつ推薦性能の高い 'gemini-1.5-flash' を使用
+  // APIバージョンを stable な 'v1' に設定することで 404 エラーを回避します
+  const model = genAI.getGenerativeModel(
+    {
+      model: 'gemini-1.5-flash',
+      generationConfig: {
+        responseMimeType: 'application/json',
+      },
     },
-  })
+    { apiVersion: 'v1' }
+  )
 
   // LLM に渡す書籍の情報を最小限にトリミングしてコンテキストサイズと応答速度を最適化
   const bookContexts = books.map((b) => ({
