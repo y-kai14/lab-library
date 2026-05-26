@@ -16,11 +16,16 @@ export default function Books() {
       (b) =>
         b.title.toLowerCase().includes(q) ||
         b.author.toLowerCase().includes(q) ||
-        b.publisher.toLowerCase().includes(q)
+        b.publisher.toLowerCase().includes(q) ||
+        b.description?.toLowerCase().includes(q)
     )
   }, [books, query])
 
-  const availableCount = books.filter((b) => !b.borrowedBy).length
+  const totalCopies = books.reduce((sum, book) => sum + (book.copyCount || 1), 0)
+  const availableCount = books.reduce(
+    (sum, book) => sum + (!book.borrowedBy ? book.copyCount || 1 : 0),
+    0
+  )
 
   return (
     <Layout>
@@ -29,7 +34,7 @@ export default function Books() {
           <div>
             <h2 className="text-xl font-bold text-gray-800">蔵書一覧</h2>
             <p className="text-sm text-gray-400">
-              全{books.length}冊 / 在庫{availableCount}冊
+              全{totalCopies}冊 / 在庫{availableCount}冊
             </p>
           </div>
           <Link
