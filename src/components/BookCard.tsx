@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Book } from '../types'
 import { useAuth } from '../hooks/useAuth'
 import { useBooks } from '../hooks/useBooks'
+import { getAvailableCount, getCopyCount, getLoans } from '../lib/bookLoans'
 
 interface Props {
   book: Book
@@ -11,9 +12,13 @@ export default function BookCard({ book }: Props) {
   const { user } = useAuth()
   const { borrowBook, returnBook, deleteBook, updateBook } = useBooks()
 
-  const isBorrowed = !!book.borrowedBy && book.borrowedBy !== ''
-  const isMyBook = user?.uid === book.borrowedBy
-  const copyCount = book.copyCount || 1
+  const loans = getLoans(book)
+  const borrowedCount = loans.length
+  const availableCount = getAvailableCount(book)
+  const isAvailable = availableCount > 0
+  const isMyBook = loans.some((loan) => loan.uid === user?.uid)
+  const copyCount = getCopyCount(book)
+  const borrowerNames = loans.map((loan) => loan.displayName).join(', ')
   const [isEditing, setIsEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -41,7 +46,8 @@ export default function BookCard({ book }: Props) {
   }
 
   const handleReturn = async () => {
-    await returnBook(book.id)
+    if (!user) return
+    await returnBook(book.id, user.uid)
   }
 
   const handleDelete = async () => {
@@ -193,10 +199,10 @@ export default function BookCard({ book }: Props) {
         )}
 
         <div className="mt-2 flex items-center gap-2 flex-wrap">
-          {isBorrowed ? (
+          {borrowedCount > 0 && (
             <>
               <span className="text-xs bg-red-50 text-red-600 px-2 py-0.5 rounded-full font-medium">
-                貸出中: {book.borrowedByName}
+                貸出中 {borrowedCount}冊{borrowerNames ? `: ${borrowerNames}` : ''}
               </span>
               {isMyBook && (
                 <button
@@ -207,18 +213,25 @@ export default function BookCard({ book }: Props) {
                 </button>
               )}
             </>
-          ) : (
+          )}
+          {isAvailable ? (
             <>
               <span className="text-xs bg-green-50 text-green-600 px-2 py-0.5 rounded-full font-medium">
-                在庫あり
+                在庫 {availableCount}冊
               </span>
-              <button
-                onClick={handleBorrow}
-                className="text-xs bg-indigo-500 text-white px-3 py-1 rounded-full hover:bg-indigo-600 transition-colors"
-              >
-                借りる
-              </button>
+              {!isMyBook && (
+                <button
+                  onClick={handleBorrow}
+                  className="text-xs bg-indigo-500 text-white px-3 py-1 rounded-full hover:bg-indigo-600 transition-colors"
+                >
+                  借りる
+                </button>
+              )}
             </>
+          ) : (
+            <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-medium">
+              在庫なし
+            </span>
           )}
           <button
             onClick={handleDelete}

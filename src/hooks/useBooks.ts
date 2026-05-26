@@ -6,12 +6,14 @@ import {
   updateDoc,
   deleteDoc,
   doc,
+  runTransaction,
   serverTimestamp,
   query,
   orderBy,
 } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import type { Book } from '../types'
+import { getAvailableCount, getLegacyBorrowFields, getLoans } from '../lib/bookLoans'
 
 export function useBooks() {
   const [books, setBooks] = useState<Book[]>([])
@@ -51,18 +53,47 @@ export function useBooks() {
     uid: string,
     displayName: string
   ) => {
-    await updateDoc(doc(db, 'books', id), {
-      borrowedBy: uid,
-      borrowedByName: displayName,
-      borrowedAt: new Date().toISOString(),
+    const bookRef = doc(db, 'books', id)
+    await runTransaction(db, async (transaction) => {
+      const snapshot = await transaction.get(bookRef)
+      if (!snapshot.exists()) throw new Error('Book not found')
+
+      const book = { id: snapshot.id, ...snapshot.data() } as Book
+      const loans = getLoans(book)
+      if (loans.some((loan) => loan.uid === uid)) return
+      if (getAvailableCount(book) <= 0) {
+        throw new Error('No copies available')
+      }
+
+      const nextLoans = [
+        ...loans,
+        {
+          uid,
+          displayName,
+          borrowedAt: new Date().toISOString(),
+        },
+      ]
+
+      transaction.update(bookRef, {
+        loans: nextLoans,
+        ...getLegacyBorrowFields(nextLoans),
+      })
     })
   }
 
-  const returnBook = async (id: string) => {
-    await updateDoc(doc(db, 'books', id), {
-      borrowedBy: '',
-      borrowedByName: '',
-      borrowedAt: '',
+  const returnBook = async (id: string, uid: string) => {
+    const bookRef = doc(db, 'books', id)
+    await runTransaction(db, async (transaction) => {
+      const snapshot = await transaction.get(bookRef)
+      if (!snapshot.exists()) throw new Error('Book not found')
+
+      const book = { id: snapshot.id, ...snapshot.data() } as Book
+      const nextLoans = getLoans(book).filter((loan) => loan.uid !== uid)
+
+      transaction.update(bookRef, {
+        loans: nextLoans,
+        ...getLegacyBorrowFields(nextLoans),
+      })
     })
   }
 

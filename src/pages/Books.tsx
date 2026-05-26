@@ -4,6 +4,7 @@ import Layout from '../components/Layout'
 import BookCard from '../components/BookCard'
 import SearchBar from '../components/SearchBar'
 import { useBooks } from '../hooks/useBooks'
+import { getAvailableCount, getCopyCount } from '../lib/bookLoans'
 
 export default function Books() {
   const { books, loading } = useBooks()
@@ -21,9 +22,9 @@ export default function Books() {
     )
   }, [books, query])
 
-  const totalCopies = books.reduce((sum, book) => sum + (book.copyCount || 1), 0)
+  const totalCopies = books.reduce((sum, book) => sum + getCopyCount(book), 0)
   const availableCount = books.reduce(
-    (sum, book) => sum + (!book.borrowedBy ? book.copyCount || 1 : 0),
+    (sum, book) => sum + getAvailableCount(book),
     0
   )
 
