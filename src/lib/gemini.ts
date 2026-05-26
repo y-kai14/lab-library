@@ -51,7 +51,7 @@ export async function recommendBooks(
         responseMimeType: 'application/json',
       },
     },
-    { apiVersion: 'v1' }
+    //{ apiVersion: 'v1' }
   )
 
   // LLM に渡す書籍の情報を最小限にトリミングしてコンテキストサイズと応答速度を最適化
