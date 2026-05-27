@@ -71,27 +71,27 @@ export default function Books() {
           </button>
         </div>
 
-        {activeTab === 'search' ? (
-          <div className="space-y-4">
-            <SearchBar value={query} onChange={setQuery} />
+        <div className={activeTab === 'search' ? "space-y-4" : "hidden"}>
+          <SearchBar value={query} onChange={setQuery} />
 
-            {loading ? (
-              <div className="text-center py-16 text-gray-400">読み込み中...</div>
-            ) : filtered.length === 0 ? (
-              <div className="text-center py-16 text-gray-400">
-                {query ? '検索結果がありません' : '蔵書がまだ登録されていません'}
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {filtered.map((book) => (
-                  <BookCard key={book.id} book={book} />
-                ))}
-              </div>
-            )}
-          </div>
-        ) : (
+          {loading ? (
+            <div className="text-center py-16 text-gray-400">読み込み中...</div>
+          ) : filtered.length === 0 ? (
+            <div className="text-center py-16 text-gray-400">
+              {query ? '検索結果がありません' : '蔵書がまだ登録されていません'}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filtered.map((book) => (
+                <BookCard key={book.id} book={book} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className={activeTab === 'ai' ? "" : "hidden"}>
           <AiRecommender books={books} />
-        )}
+        </div>
       </div>
     </Layout>
   )
