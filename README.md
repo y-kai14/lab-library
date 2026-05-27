@@ -10,6 +10,7 @@
 - タイトル・著者・出版社の手動入力による登録
 - 貸出・返却の記録と在庫状況の管理
 - タイトル・著者・出版社でのリアルタイム検索
+- AI（Gemini）による蔵書推薦（「どんな本が欲しいか」「何をしたいか」などの自然言語入力から、適した書籍をAIが自動推薦する機能）
 - メールアドレスとパスワードによるログイン
 
 ## セットアップ
@@ -61,7 +62,7 @@ service cloud.firestore {
 npm install firebase
 ```
 
-表示される `firebaseConfig` と `.env.example` を参考に `.env.local` を作成し、各自のものにする
+表示される `firebaseConfig` と `.env.example` を参考に `.env.local` を作成し、各自のものにする。また、AI推薦機能を利用するため、Google AI Studio等で取得したGemini APIキーを `VITE_GEMINI_API_KEY` として追加してください。
 
 ### 4. 開発サーバーの起動
 
@@ -104,6 +105,12 @@ Firebase Authentication で作成したメールアドレスとパスワード�
 
 カード右下の「削除」をタップすると確認ダイアログが表示され、削除できます。
 
+### AIによる蔵書推薦・検索
+
+1. 画面上部のタブを「通常検索」から「AIに相談」に切り替えます。
+2. 「どのような本をお探しですか？」の入力欄に、読みたい本の特徴や実現したいこと（例: 「Reactの初心者向けの本」「機械学習の概要がわかる本」など）を自由に入力します。
+3. 「AIにおすすめを聞く」ボタンをタップすると、現在登録されている蔵書の中から適した書籍をAIが選定し、おすすめする理由を添えて提示します。
+
 ## デプロイ
 
 ```bash
@@ -137,3 +144,4 @@ firebase deploy
 | 認証・DB | Firebase Authentication + Firestore |
 | バーコードスキャン | html5-qrcode |
 | 書誌情報取得 | OpenBD API |
+| 書籍推薦AI | Gemini 2.5 Flash API (`@google/generative-ai`) |
