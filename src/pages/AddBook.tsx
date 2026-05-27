@@ -6,34 +6,74 @@ import { useBooks } from '../hooks/useBooks'
 import { useAuth } from '../hooks/useAuth'
 import { fetchBookByISBN } from '../lib/openbd'
 
-const EMPTY = { title: '', author: '', publisher: '', isbn: '', coverUrl: '' }
+type FormState = {
+  title: string
+  author: string
+  publisher: string
+  isbn: string
+  coverUrl: string
+  description: string
+  copyCount: number
+}
+
+type TextField = Exclude<keyof FormState, 'copyCount'>
+
+const EMPTY: FormState = {
+  title: '',
+  author: '',
+  publisher: '',
+  isbn: '',
+  coverUrl: '',
+  description: '',
+  copyCount: 1,
+}
 
 export default function AddBook() {
-  const [form, setForm] = useState(EMPTY)
+  const [form, setForm] = useState<FormState>(EMPTY)
   const [showScanner, setShowScanner] = useState(false)
   const [scanning, setScanning] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [metadataMessage, setMetadataMessage] = useState('')
   const [error, setError] = useState('')
   const { addBook } = useBooks()
   const { user } = useAuth()
   const navigate = useNavigate()
 
-  const set = (key: keyof typeof EMPTY, value: string) =>
+  const set = (key: TextField, value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }))
 
-  const handleScan = useCallback(async (isbn: string) => {
-    setShowScanner(false)
+  const fillBookInfoByISBN = useCallback(async (isbn: string) => {
+    const cleanIsbn = isbn.replace(/-/g, '').trim()
+    if (!cleanIsbn) {
+      setError('ISBNを入力してください')
+      return
+    }
+
     setScanning(true)
-    setForm((prev) => ({ ...prev, isbn }))
+    setMetadataMessage('')
+    setError('')
+    setForm((prev) => ({ ...prev, isbn: cleanIsbn }))
     try {
-      const info = await fetchBookByISBN(isbn)
+      const info = await fetchBookByISBN(cleanIsbn)
       if (info) {
-        setForm((prev) => ({ ...prev, ...info, isbn }))
+        setForm((prev) => ({ ...prev, ...info, isbn: cleanIsbn }))
+        setMetadataMessage(
+          info.description
+            ? '書誌情報と概要を取得しました'
+            : '書誌情報を取得しました。概要は手動で入力できます'
+        )
+      } else {
+        setMetadataMessage('書誌情報が見つかりませんでした。手動で入力してください')
       }
     } finally {
       setScanning(false)
     }
   }, [])
+
+  const handleScan = useCallback(async (isbn: string) => {
+    setShowScanner(false)
+    await fillBookInfoByISBN(isbn)
+  }, [fillBookInfoByISBN])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -45,13 +85,16 @@ export default function AddBook() {
     setError('')
     setSubmitting(true)
     try {
-      await addBook({
+      const addPromise = addBook({
         ...form,
+        copyCount: normalizeCopyCount(form.copyCount),
         createdBy: user.uid,
       })
-      navigate('/')
+      navigate('/', { replace: true })
+      await addPromise
     } catch (e) {
       setError(`登録に失敗しました: ${e instanceof Error ? e.message : String(e)}`)
+      navigate('/add', { replace: true })
     } finally {
       setSubmitting(false)
     }
@@ -76,24 +119,75 @@ export default function AddBook() {
           </p>
         )}
 
+        {metadataMessage && (
+          <p className="text-center text-sm text-green-600 mb-4">
+            {metadataMessage}
+          </p>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
           {[
             { key: 'title', label: 'タイトル *', placeholder: '書籍タイトル' },
             { key: 'author', label: '著者 *', placeholder: '著者名' },
             { key: 'publisher', label: '出版社 *', placeholder: '出版社名' },
-            { key: 'isbn', label: 'ISBN', placeholder: '9784000000000' },
           ].map(({ key, label, placeholder }) => (
             <div key={key}>
               <label className="text-sm text-gray-600 block mb-1">{label}</label>
               <input
                 type="text"
-                value={form[key as keyof typeof EMPTY]}
-                onChange={(e) => set(key as keyof typeof EMPTY, e.target.value)}
+                value={form[key as TextField]}
+                onChange={(e) => set(key as TextField, e.target.value)}
                 placeholder={placeholder}
                 className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
               />
             </div>
           ))}
+
+          <div>
+            <label className="text-sm text-gray-600 block mb-1">ISBN</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={form.isbn}
+                onChange={(e) => set('isbn', e.target.value)}
+                placeholder="9784000000000"
+                className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              />
+              <button
+                type="button"
+                onClick={() => fillBookInfoByISBN(form.isbn)}
+                disabled={scanning || !form.isbn.trim()}
+                className="px-4 py-2.5 rounded-xl text-sm font-medium bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors disabled:opacity-50"
+              >
+                取得
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sm text-gray-600 block mb-1">概要</label>
+            <textarea
+              value={form.description}
+              onChange={(e) => set('description', e.target.value)}
+              placeholder="本の概要"
+              rows={5}
+              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm text-gray-600 block mb-1">所蔵冊数</label>
+            <input
+              type="number"
+              value={form.copyCount}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, copyCount: Number(e.target.value) }))
+              }
+              min="1"
+              max="99"
+              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            />
+          </div>
 
           {error && <p className="text-sm text-red-500">{error}</p>}
 
@@ -121,4 +215,9 @@ export default function AddBook() {
       )}
     </Layout>
   )
+}
+
+function normalizeCopyCount(value: number) {
+  if (!Number.isFinite(value)) return 1
+  return Math.min(Math.max(Math.floor(value), 1), 99)
 }
