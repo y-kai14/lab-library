@@ -62,7 +62,7 @@ service cloud.firestore {
 npm install firebase
 ```
 
-表示される `firebaseConfig` と `.env.example` を参考に `.env.local` を作成し、各自のものにする。また、AI推薦機能を利用するため、Google AI Studio等で取得したGemini APIキーを `VITE_GEMINI_API_KEY` として追加してください。
+表示される `firebaseConfig` と `.env.example` を参考に `.env.local` を作成し、各自のものにする。また、AI推薦機能を利用するため、Google AI Studioで取得したGemini APIキーを `VITE_GEMINI_API_KEY` として追加してください。さらに、書籍検索機能を利用するため、Google CloudでGoogle Books APIを有効化し、取得したAPIキーを `VITE_GOOGLE_BOOKS_API_KEY` として追加してください。
 
 ### 4. 開発サーバーの起動
 
