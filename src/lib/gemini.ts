@@ -1,4 +1,5 @@
 import type { Book } from '../types'
+import { getAvailableCount } from './bookLoans'
 
 export interface RecommendationResult {
   bookId: string
@@ -61,7 +62,7 @@ export async function recommendBooks(
     author: b.author,
     publisher: b.publisher,
     description: b.description || '概要なし',
-    status: b.borrowedBy ? '貸出中' : '在庫あり',
+    status: getAvailableCount(b) > 0 ? '在庫あり' : '貸出中',
   }))
 
   const prompt = `

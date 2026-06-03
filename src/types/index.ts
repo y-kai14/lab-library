@@ -7,11 +7,18 @@ export interface Book {
   coverUrl?: string
   description?: string
   copyCount?: number
+  loans?: BookLoan[]
   borrowedBy?: string
   borrowedByName?: string
   borrowedAt?: string
   createdAt: string
   createdBy: string
+}
+
+export interface BookLoan {
+  uid: string
+  displayName: string
+  borrowedAt: string
 }
 
 export interface User {

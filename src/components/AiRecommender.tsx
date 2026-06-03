@@ -3,6 +3,12 @@ import type { Book } from '../types'
 import { recommendBooks, isGeminiEnabled } from '../lib/gemini'
 import { useAuth } from '../hooks/useAuth'
 import { useBooks } from '../hooks/useBooks'
+import {
+  getAvailableCount,
+  getCopyCount,
+  getLegacyBorrowFields,
+  getLoans,
+} from '../lib/bookLoans'
 
 interface Props {
   books: Book[]
@@ -11,6 +17,12 @@ interface Props {
 interface RecommendedBookItem {
   book: Book
   reason: string
+}
+
+type LoanUser = {
+  uid: string
+  email: string | null
+  displayName: string | null
 }
 
 export default function AiRecommender({ books }: Props) {
@@ -89,17 +101,7 @@ export default function AiRecommender({ books }: Props) {
       // ローカルのresultsステート内にある対象本オブジェクトの borrowedBy を更新してリアクティブにする
       setResults((prev) =>
         prev.map((item) =>
-          item.book.id === bookId
-            ? {
-                ...item,
-                book: {
-                  ...item.book,
-                  borrowedBy: user.uid,
-                  borrowedByName: user.displayName || user.email || 'Unknown',
-                  borrowedAt: new Date().toISOString(),
-                },
-              }
-            : item
+          item.book.id === bookId ? addLocalLoan(item, user) : item
         )
       )
     } catch (e) {
@@ -108,22 +110,13 @@ export default function AiRecommender({ books }: Props) {
   }
 
   const handleReturn = async (bookId: string) => {
+    if (!user) return
     try {
-      await returnBook(bookId)
+      await returnBook(bookId, user.uid)
       // ローカルのresultsステート内にある対象本オブジェクトの borrowedBy を更新してリアクティブにする
       setResults((prev) =>
         prev.map((item) =>
-          item.book.id === bookId
-            ? {
-                ...item,
-                book: {
-                  ...item.book,
-                  borrowedBy: '',
-                  borrowedByName: '',
-                  borrowedAt: '',
-                },
-              }
-            : item
+          item.book.id === bookId ? removeLocalLoan(item, user.uid) : item
         )
       )
     } catch (e) {
@@ -290,8 +283,13 @@ export default function AiRecommender({ books }: Props) {
           ) : (
             <div className="space-y-4">
               {results.map(({ book, reason }) => {
-                const isBorrowed = !!book.borrowedBy && book.borrowedBy !== ''
-                const isMyBook = user?.uid === book.borrowedBy
+                const loans = getLoans(book)
+                const borrowedCount = loans.length
+                const availableCount = getAvailableCount(book)
+                const isAvailable = availableCount > 0
+                const isMyBook = loans.some((loan) => loan.uid === user?.uid)
+                const borrowerNames = loans.map((loan) => loan.displayName).join(', ')
+                const copyCount = getCopyCount(book)
 
                 return (
                   <div
@@ -331,6 +329,7 @@ export default function AiRecommender({ books }: Props) {
                         </h4>
                         <p className="text-xs text-gray-500 mt-1">{book.author}</p>
                         <p className="text-[10px] text-gray-400 font-mono mt-0.5">{book.publisher}</p>
+                        <p className="text-[10px] text-gray-400 mt-1">所蔵 {copyCount}冊</p>
                         {book.description && (
                           <p className="text-[11px] text-gray-500 mt-2 line-clamp-2 leading-relaxed bg-gray-50/60 p-2 rounded-lg">
                             {book.description}
@@ -338,10 +337,10 @@ export default function AiRecommender({ books }: Props) {
                         )}
 
                         <div className="mt-3 flex items-center gap-2 flex-wrap">
-                          {isBorrowed ? (
+                          {borrowedCount > 0 && (
                             <>
                               <span className="text-[10px] bg-red-50 text-red-600 px-2 py-0.5 rounded-full font-medium">
-                                貸出中: {book.borrowedByName}
+                                貸出中 {borrowedCount}冊{borrowerNames ? `: ${borrowerNames}` : ''}
                               </span>
                               {isMyBook && (
                                 <button
@@ -352,18 +351,25 @@ export default function AiRecommender({ books }: Props) {
                                 </button>
                               )}
                             </>
-                          ) : (
+                          )}
+                          {isAvailable ? (
                             <>
                               <span className="text-[10px] bg-green-50 text-green-600 px-2 py-0.5 rounded-full font-medium">
-                                在庫あり
+                                在庫 {availableCount}冊
                               </span>
-                              <button
-                                onClick={() => handleBorrow(book.id)}
-                                className="text-xs bg-indigo-600 text-white px-3.5 py-1 rounded-full hover:bg-indigo-700 transition-colors font-medium shadow-sm hover:shadow active:scale-95 duration-100"
-                              >
-                                借りる
-                              </button>
+                              {!isMyBook && (
+                                <button
+                                  onClick={() => handleBorrow(book.id)}
+                                  className="text-xs bg-indigo-600 text-white px-3.5 py-1 rounded-full hover:bg-indigo-700 transition-colors font-medium shadow-sm hover:shadow active:scale-95 duration-100"
+                                >
+                                  借りる
+                                </button>
+                              )}
                             </>
+                          ) : (
+                            <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-medium">
+                              在庫なし
+                            </span>
                           )}
                         </div>
                       </div>
@@ -377,4 +383,42 @@ export default function AiRecommender({ books }: Props) {
       )}
     </div>
   )
+}
+
+function addLocalLoan(item: RecommendedBookItem, user: LoanUser) {
+  const loans = getLoans(item.book)
+  if (loans.some((loan) => loan.uid === user.uid) || getAvailableCount(item.book) <= 0) {
+    return item
+  }
+
+  const nextLoans = [
+    ...loans,
+    {
+      uid: user.uid,
+      displayName: user.displayName || user.email || 'Unknown',
+      borrowedAt: new Date().toISOString(),
+    },
+  ]
+
+  return {
+    ...item,
+    book: {
+      ...item.book,
+      loans: nextLoans,
+      ...getLegacyBorrowFields(nextLoans),
+    },
+  }
+}
+
+function removeLocalLoan(item: RecommendedBookItem, uid: string) {
+  const nextLoans = getLoans(item.book).filter((loan) => loan.uid !== uid)
+
+  return {
+    ...item,
+    book: {
+      ...item.book,
+      loans: nextLoans,
+      ...getLegacyBorrowFields(nextLoans),
+    },
+  }
 }
